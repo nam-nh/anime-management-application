@@ -76,6 +76,7 @@ public class EpisodesList extends javax.swing.JFrame {
                 return canEdit [columnIndex];
             }
         });
+        jTable1.setCellSelectionEnabled(true);
         jTable1.getTableHeader().setReorderingAllowed(false);
         jScrollPane1.setViewportView(jTable1);
         if (jTable1.getColumnModel().getColumnCount() > 0) {

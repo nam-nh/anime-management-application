@@ -25,8 +25,8 @@ public class DBConnection {
     private int episodes, status, duration, members, favorites;
     private double score;
     private PreparedStatement tempStmt;
-
-    public DBConnection() {
+    
+    public void connectToDB(){
         try {
             //Get a connection to database
             // TODO change your own database address
@@ -45,11 +45,12 @@ public class DBConnection {
     }
 
     public Vector<Vector<Object>> loadAnimes() {
+        connectToDB();
         Vector<Vector<Object>> data = new Vector<Vector<Object>>();
         int typeId, status;
         try {
             Statement myStmt = conn.createStatement();
-            ResultSet myRs = myStmt.executeQuery("select * from animes order by name");
+            ResultSet myRs = myStmt.executeQuery("select *, count(backup_link) as count from animes left join anime_episodes on animes.id = anime_episodes.anime_id and length(anime_episodes.backup_link) > 1 group by animes.id order by name");
             while (myRs.next()) {
                 Vector<Object> row = new Vector<Object>();
                 row.add(myRs.getString("id"));
@@ -63,7 +64,7 @@ public class DBConnection {
                     row.add("Series");
                 }
 
-                row.add(myRs.getInt("episodes"));
+                row.add(myRs.getString("count")+ "/" + myRs.getInt("episodes"));
 
                 status = myRs.getInt("status");
                 switch (status) {
@@ -91,6 +92,7 @@ public class DBConnection {
     }
 
     public String addMALLink(String id, HashMap<String, String> info, int sub) {
+        connectToDB();
         try {
             if (!animeExist(id)) {
                 PreparedStatement myStmt = conn.prepareStatement("insert into animes values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -208,13 +210,13 @@ public class DBConnection {
                 return info.get("Title") + ": Duplicate!";
             }
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(null, ex.getMessage());
             ex.printStackTrace();
             return "Error!";
         }
     }
 
     public boolean animeExist(String id) {
+        connectToDB();
         try {
             PreparedStatement myStmt = conn.prepareStatement("select id from animes "
                     + "where id = ?");
@@ -231,6 +233,7 @@ public class DBConnection {
     }
 
     public void removeAnime(String id) {
+        connectToDB();
         try {
             tempStmt = conn.prepareStatement("delete from animes "
                     + "where id = ?");
@@ -247,6 +250,7 @@ public class DBConnection {
     }
 
     public Vector<Vector<Object>> searchAnimes(String id, String name, String malLink, String anidbLink, int type, int audio) {
+        connectToDB();
         Vector<Vector<Object>> data = new Vector<Vector<Object>>();
         int typeId, status;
         String typeQuery = " and 3 = ?";
@@ -265,9 +269,9 @@ public class DBConnection {
 
         if (!id.equals("")) {
             if (id.contains("-")) {
-                idQuery = "id = ?";
+                idQuery = "animes.id = ?";
             } else {
-                idQuery = "id like ?";
+                idQuery = "animes.id like ?";
             }
         }
 
@@ -276,13 +280,13 @@ public class DBConnection {
         }
 
         if (!malLink.equals("")) {
-            malLinkQuery = " and id like ?";
+            malLinkQuery = " and animes.id like ?";
         }
 
         if (!anidbLink.equals("")) {
             anidbLinkQuery = " and anidb_link like ?";
         }
-        String query = "Select * from animes where " + idQuery + nameQuery + malLinkQuery + anidbLinkQuery + typeQuery + audioQuery;
+        String query = "Select *, count(backup_link) as count from animes left join anime_episodes on animes.id = anime_episodes.anime_id and length(anime_episodes.backup_link) > 1 where " + idQuery + nameQuery + malLinkQuery + anidbLinkQuery + typeQuery + audioQuery + " group by animes.id";
         System.out.println(query);
         try {
             PreparedStatement myStmt = conn.prepareStatement(query);
@@ -331,7 +335,7 @@ public class DBConnection {
                     row.add("Series");
                 }
 
-                row.add(myRs.getInt("episodes"));
+                row.add(myRs.getInt("count") + "/"+ myRs.getInt("episodes"));
 
                 status = myRs.getInt("status");
                 switch (status) {
@@ -359,6 +363,7 @@ public class DBConnection {
     }
 
     public HashMap<String, String> searchAnimesById(String id) {
+        connectToDB();
         HashMap<String, String> info = new HashMap<String, String>();
         try {
             PreparedStatement myStmt = conn.prepareStatement("select * from animes "
@@ -388,6 +393,7 @@ public class DBConnection {
     }
 
     public void editAnime(String selectedId, String newTitle, String newMALLink, String newAnidbLink, String newEng, String newSyn, int newType, int newAudio, int newEpisodes, int newDuration, int newStatus, String newAired) {
+        connectToDB();
         try {
             PreparedStatement myStmt = conn.prepareStatement("update animes set name = ?, mal_link = ?, anidb_link = ?, eng = ?, synonyms = ?, audios =?, type = ?, episodes = ?, duration = ?, status = ?, aired = ? "
                     + "where id = ?");
@@ -413,6 +419,7 @@ public class DBConnection {
     }
 
     public Vector<Vector<Object>> loadEpisodes(String animeId) {
+        connectToDB();
         Vector<Vector<Object>> data = new Vector<Vector<Object>>();
         try {
             PreparedStatement myStmt = conn.prepareStatement("select * from anime_episodes "
@@ -441,6 +448,7 @@ public class DBConnection {
     }
 
     public void removeEpisode(String epId) {
+        connectToDB();
         try {
             tempStmt = conn.prepareStatement("delete from anime_episodes "
                     + "where id = ?");
@@ -457,6 +465,7 @@ public class DBConnection {
     }
 
     public String addEpisode(String animeId, int order, String episodeName, String backupLink, String driveLink, String ggcloudLink, String link3, String link4) {
+        connectToDB();
         if (!epExist(animeId, episodeName, order)) {
             try {
                 PreparedStatement myStmt = conn.prepareStatement("insert into anime_episodes(anime_id, orderr, episode_name, backup_link, drive_link, gg_cloud_link, link_3, link_4) values (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -474,7 +483,6 @@ public class DBConnection {
                 conn.commit();
                 return episodeName + " :Added!\n";
             } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
                 ex.printStackTrace();
                 return "";
             }
@@ -484,6 +492,7 @@ public class DBConnection {
     }
 
     public void editEpisode(int episodeId, int order, String episodeName, String backupLink, String driveLink, String ggcloudLink, String link3, String link4) {
+        connectToDB();
         try {
             PreparedStatement myStmt = conn.prepareStatement("update anime_episodes set"
                     + " orderr = ?,"
@@ -513,6 +522,7 @@ public class DBConnection {
     }
 
     public HashMap<String, String> searchEpisodeById(String id) {
+        connectToDB();
         HashMap<String, String> info = new HashMap<String, String>();
         try {
             PreparedStatement myStmt = conn.prepareStatement("select * from anime_episodes "
@@ -537,9 +547,10 @@ public class DBConnection {
     }
 
     public boolean epExist(String animeId, String epName, int order) {
+        connectToDB();
         try {
             PreparedStatement myStmt = conn.prepareStatement("select id from anime_episodes "
-                    + "where anime_id = ? and (episode_name like ? or [orderr] = ?)");
+                    + "where anime_id = ? and (episode_name like ? or orderr = ?)");
             //Set the parameters
             myStmt.setString(1, animeId);
             myStmt.setString(2, epName);

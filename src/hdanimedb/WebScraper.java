@@ -20,11 +20,11 @@ public class WebScraper {
     private HashMap<String,String> info;
     Connection.Response response = null;
     Document doc;
-    Elements tempElement;
+    Elements tempElement, tempElement1;
     private String title, engTitle, synonymsTitle, type, episodes, status, aired;
     private String premiered, broadcast, producers, licensors, studios, source;
     private String genres, duration, rating, score, ranked, popularity, members, favorites;
-    private String tempString;
+    private String tempString, episodesList;
     public HashMap<String,String> getMalInfo(String malUrl, String anidb){
         info = new HashMap<String, String>();
         try {
@@ -55,89 +55,108 @@ public class WebScraper {
                     System.out.println("Episodes: " + episodes);
                 } else if (tempString.contains("Status:") && !tempString.contains("WatchingCompletedOn")){
                     status = tempString.split("Status: ")[1];
-                    System.out.println("Status: " + status);
                 } else if (tempString.contains("Aired:")){
                     aired = tempString.split("Aired: ")[1];
-                    System.out.println("Aired: " + aired);
                 } else if (tempString.contains("Premiered:")){
                     premiered = tempString.split("Premiered: ")[1];
-                    System.out.println("Premiered: " + premiered);
                 } else if (tempString.contains("Broadcast:")){
                     broadcast = tempString.split("Broadcast: ")[1];
-                    System.out.println("Broadcast: " + broadcast);
                 } else if (tempString.contains("Producers:")){
                     if(tempString.contains("None found")){
                         producers = "None found";
                     } else {
                         producers = tempString.split("Producers: ")[1];
                     }
-                    System.out.println("Producers: " + producers);
                 } else if (tempString.contains("Licensors:")){
                     if(tempString.contains("None found")){
                         licensors = "None found";
                     } else {
                         licensors = tempString.split("Licensors: ")[1];
                     }
-                    System.out.println("Licensors: " + licensors);
                 } else if (tempString.contains("Studios:")){
                     studios = tempString.split("Studios: ")[1];
-                    System.out.println("Studios: " + studios);
                 } else if (tempString.contains("Source:")){
                     source = tempString.split("Source: ")[1];
-                    System.out.println("Source: " + source);
                 } else if (tempString.contains("Genres:")){
                     genres = tempString.split("Genres: ")[1];
-                    System.out.println("Genres: " + genres);
                 } else if (tempString.contains("Duration:")){
                     duration = tempString.split("Duration: ")[1];
-                    System.out.println("Duration: " + duration);
                 } else if (tempString.contains("Rating:")){
                     rating = tempString.split("Rating: ")[1];
-                    System.out.println("Rating: " + rating);
                 } else if (tempString.contains("Score:") && !tempString.contains("Masterpiece")){
                     score = tempString.split("Score: ")[1].split(" ")[0];
-                    System.out.println("Score: " + score);
                 } else if (tempString.contains("Ranked:")){
                     ranked = tempString.split("Ranked: ")[1].split(" ")[0];
-                    System.out.println("Ranked: " + ranked);
                 } else if (tempString.contains("Popularity:")){
                     popularity = tempString.split("Popularity: ")[1];
-                    System.out.println("Popularity: " + popularity);
                 } else if (tempString.contains("Members:")){
                     members = tempString.split("Members: ")[1];
-                    System.out.println("Members: " + members);
                 } else if (tempString.contains("Favorites:")){
                     favorites = tempString.split("Favorites: ")[1];
-                    System.out.println("Favorites: " + favorites);
                 }
                 
-                info.put("MALUrl", malUrl);
-                info.put("AnidbUrl", anidb);
-                info.put("Title",title);
-                info.put("English",engTitle);
-                info.put("Synonyms",synonymsTitle);
-                info.put("Type",type);
-                info.put("Episodes",episodes);
-                info.put("Status",status);
-                info.put("Aired",aired);
-                info.put("Premiered",premiered);
-                info.put("Broadcast",broadcast);
-                info.put("Producers",producers);
-                info.put("Licensors",licensors);
-                info.put("Studios",studios);
-                info.put("Source",source);
-                info.put("Genres",genres);
-                info.put("Duration",duration);
-                info.put("Rating",rating);
-                info.put("Score",score);
-                info.put("Ranked",ranked);
-                info.put("Popularity",popularity);
-                info.put("Members",members);
-                info.put("Favorites",favorites);
+                
+                
+                
             }
+            
+            //get episodes infomation
+            episodesList = "";
+            if(anidb.length() > 2) {
+                response = Jsoup.connect(anidb)
+                        .userAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.21 (KHTML, like Gecko) Chrome/19.0.1042.0 Safari/535.21")
+                        .timeout(30000)
+                        .execute();
+                doc = response.parse();
+                tempElement = doc.select("#eplist > tbody");
+                tempElement = tempElement.select("tr");
+                
+                for (int i=0; i<tempElement.size(); i++) {
+                    tempElement1 = tempElement.get(i).select("td");
+
+                    try{
+                        int orderEp = Integer.parseInt(tempElement1.get(0).text());
+                        if(orderEp <10){
+                            episodesList += "Episode 0" + tempElement1.get(0).text() + ": " + tempElement1.get(1).text() + "&&&&&" + tempElement1.get(0).text() + "~~~";
+                        } else {
+                            episodesList += "Episode " + tempElement1.get(0).text() + ": " + tempElement1.get(1).text() + "&&&&&" + tempElement1.get(0).text() + "~~~";
+                        }
+                    } catch(NumberFormatException e){
+                        System.out.println("Episode Special not added!");
+                    }
+                };
+            }
+            
+            // put info to hashmap
+            info.put("MALUrl", malUrl);
+            info.put("AnidbUrl", anidb);
+            info.put("Title",title);
+            info.put("English",engTitle);
+            info.put("Synonyms",synonymsTitle);
+            info.put("Type",type);
+            info.put("Episodes",episodes);
+            info.put("Status",status);
+            info.put("Aired",aired);
+            info.put("Premiered",premiered);
+            info.put("Broadcast",broadcast);
+            info.put("Producers",producers);
+            info.put("Licensors",licensors);
+            info.put("Studios",studios);
+            info.put("Source",source);
+            info.put("Genres",genres);
+            info.put("Duration",duration);
+            info.put("Rating",rating);
+            info.put("Score",score);
+            info.put("Ranked",ranked);
+            info.put("Popularity",popularity);
+            info.put("Members",members);
+            info.put("Favorites",favorites);
+            info.put("Episode List", episodesList);
+            
         } catch (IOException e) {
             System.out.println("io - "+e);
         }
+                
         return info;
     }
 }
